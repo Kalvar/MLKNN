@@ -3,6 +3,7 @@ $LOAD_PATH.unshift(File.dirname(__FILE__)) unless $LOAD_PATH.include?(File.dirna
 
 require 'ml_distance_function'
 require 'ml_distance_kernel'
+require 'ml_knn_pattern'
 
 class MLKNN
 
@@ -11,14 +12,12 @@ class MLKNN
 	DISTANCE_KEY   = "distance"
 	UNKNOWN_GROUP  = "unknown_group"
 
-	attr_accessor :distance_function, :kernel_method, :all_data, :training_sets, :training_groups, :completion_block
+	attr_accessor :distance_function, :kernel_method, :training_sets, :completion_block
 
 	def initialize
 		@distance_function = MLDistanceFunction.new
 		@kernel_method     = MLDistanceKernel::ECULIDEAN
-		@all_data 	       = {}
 		@training_sets     = {}
-		@training_groups   = {}
 	end
  
 	def add_features(features, group_name, identifier)
@@ -27,9 +26,9 @@ class MLKNN
 
 	def classify(pattern_features, identifier, k_neighbor, &block)
 		neighbor_distances 		= []
-		@training_sets.each{ |classified_id, classified_features|
-			distance 		    = calculate_distance(classified_features, pattern_features)
-			neighbor_distances << {IDENTIFIER_KEY=>classified_id, DISTANCE_KEY=>distance}
+		@training_sets.each{ |classified_id, knn_pattern|
+			distance 		    = calculate_distance(knn_pattern.features, pattern_features)
+			neighbor_distances << {IDENTIFIER_KEY => classified_id, DISTANCE_KEY => distance}
 		}
 
 		# DESC distance unit, that used b <=> a
@@ -42,7 +41,7 @@ class MLKNN
 		chose_k 			   = 0
 		success				   = false
 		sorted_distances.each_with_index{ |neighbors, index| 
-			pattern_group      = @training_groups[neighbors[IDENTIFIER_KEY]]
+			pattern_group      = @training_sets[neighbors[IDENTIFIER_KEY]].group_name
 			counting 	       = counting_neighbors[pattern_group].to_i + 1
 			if counting > max_counting
 				max_counting   = counting
@@ -78,7 +77,7 @@ class MLKNN
 			add_classified_sets(pattern_features, assigned_group, identifier)
 		end
 
-		block.call(success, assigned_group, max_counting, @all_data) if block_given?
+		block.call(success, assigned_group, max_counting, @training_sets.values) if block_given?
 	end
 
 	def classify_with_auto_k(pattern_features, identifier, &block)
@@ -105,8 +104,6 @@ class MLKNN
 	end
 
 	def add_classified_sets(features, group_name, identifier)
-		@training_sets[identifier] 	 = features
-		@training_groups[identifier] = group_name
-		@all_data[identifier]		 = [group_name, identifier, features]
+		@training_sets[identifier] = MLKNNPattern.new(features, group_name, identifier)
 	end
 end

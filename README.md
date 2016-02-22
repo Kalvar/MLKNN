@@ -30,7 +30,7 @@ knn.classify([3, 4, 1], "Sam", 3){
 
 ## Version
 
-V1.0
+V1.1
 
 ## LICENSE
 
