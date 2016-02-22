@@ -9,7 +9,7 @@ knn.add_features([2, 1, 1], "SPORT", "Wanie")
 
 # Start in training, for this sample we wanna classify Sam this guy and input his features, his name (ID) and how many neighbors.
 # To use for-loop classifies more patterns once time. 
-knn.classify([3, 4, 1], "Sam", 3){ 
+knn.classify([3, 4, 1], "Sam", knn.choose_k){ 
 	|success, assigned_group, max_counting, all_patterns|
 
 	puts "Training completion : #{success}\n"
