@@ -6,6 +6,11 @@ require 'ml_distance_kernel'
 
 class MLKNN
 
+	# Const
+	IDENTIFIER_KEY = "identifier"
+	DISTANCE_KEY   = "distance"
+	UNKNOWN_GROUP  = "unknown_group"
+
 	attr_accessor :distance_function, :kernel_method, :all_data, :training_sets, :training_groups, :completion_block
 
 	def initialize
@@ -16,21 +21,73 @@ class MLKNN
 		@training_groups   = {}
 	end
  
-	def add_features(features, group, identifier)
-		@training_sets[identifier] 	 = features
-		@training_groups[identifier] = group
-		@all_data[identifier]		 = [group, identifier, features]
+	def add_features(features, group_name, identifier)
+		add_classified_sets(features, group_name, identifier)
 	end
 
 	def classify(pattern_features, identifier, k_neighbor, &block)
-		
+		neighbor_distances 		= []
 		@training_sets.each{ |classified_id, classified_features|
-			distance = calculate_distance(classified_features, pattern_features)
-			puts "here #{distance}"
+			distance 		    = calculate_distance(classified_features, pattern_features)
+			neighbor_distances << {IDENTIFIER_KEY=>classified_id, DISTANCE_KEY=>distance}
 		}
 
-		block.call(9) if block_given?
+		# DESC distance unit, that used b <=> a
+		sorted_distances       = neighbor_distances.sort{ |a, b| b[DISTANCE_KEY] <=> a[DISTANCE_KEY] }
+		# Counting the nearest neighbors 
+		sum_group_distances    = {}
+		counting_neighbors     = {}
+		max_counting	       = 0
+		assigned_group		   = UNKNOWN_GROUP
+		chose_k 			   = 0
+		success				   = false
+		sorted_distances.each_with_index{ |neighbors, index| 
+			pattern_group      = @training_groups[neighbors[IDENTIFIER_KEY]]
+			counting 	       = counting_neighbors[pattern_group].to_i + 1
+			if counting > max_counting
+				max_counting   = counting
+				# Assign to its own group
+				assigned_group = pattern_group
+			end
+			counting_neighbors[pattern_group] = counting
 
+			# Sum the distance of neighbor of pattern to support assign to right group since it has same neighbors of nearest
+			neighbor_distance  = neighbors[DISTANCE_KEY]
+			group_distance     = sum_group_distances[pattern_group].to_f
+			group_distance 	  += neighbor_distance
+			sum_group_distances[pattern_group] = group_distance
+
+			chose_k += 1
+			if chose_k >= k_neighbor
+				own_distance = sum_group_distances[assigned_group].to_f
+				counting_neighbors.each{ |group_name, counting| 
+					if (group_name != assigned_group) && (counting_neighbors[group_name] == max_counting)
+						other_distance = sum_group_distances[group_name].to_f
+						if other_distance < own_distance
+							own_distance   = other_distance
+							assigned_group = group_name
+						end
+					end
+				}
+				break;
+			end
+		}
+
+		if max_counting > 0
+			success = true
+			add_classified_sets(pattern_features, assigned_group, identifier)
+		end
+
+		block.call(success, assigned_group, max_counting, @all_data) if block_given?
+	end
+
+	def classify_with_auto_k(pattern_features, identifier, &block)
+		classify(pattern_features, identifier, choose_k(), block)
+	end
+
+	# sqrt(n) to simply choose K neighbor number
+	def choose_k
+		Math.sqrt(@training_sets.count).ceil
 	end
 
 	private
@@ -47,28 +104,9 @@ class MLKNN
 		end
 	end
 
-	public
-	def test
-
-		add_features([1, 2, 3], "SPORT", "John")
-		add_features([3, 4, 5], "3C", "Tim")
-		add_features([2, 1, 1], "SPORT", "Wanie")
-		
-		classify([3, 4, 1], "Enoch", 2){
-			puts "done #{value}" 
-		}
-
-		distance = MLDistanceFunction.new
-		a = distance.cosine_similarity([1, 2, 3], [4, 5, 6])
-		puts "here #{a}"
-
-		b = distance.eculidean([1, 2], [4, 5])
-		puts "here #{b}"
-
-		c = distance.rbf([1, 2, 3], [4, 5, 6], 2.0)
-		puts "here #{c}"
-
+	def add_classified_sets(features, group_name, identifier)
+		@training_sets[identifier] 	 = features
+		@training_groups[identifier] = group_name
+		@all_data[identifier]		 = [group_name, identifier, features]
 	end
-
-
 end
