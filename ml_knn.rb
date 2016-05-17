@@ -12,7 +12,7 @@ class MLKNN
 	DISTANCE_KEY   = "distance"
 	UNKNOWN_GROUP  = "unknown_group"
 
-	attr_accessor :distance_function, :kernel_method, :training_sets, :completion_block
+	attr_accessor :distance_function, :kernel_method, :training_sets
 
 	def initialize
 		@distance_function = MLDistanceFunction.new
@@ -45,7 +45,7 @@ class MLKNN
 			counting 	       = counting_neighbors[pattern_group].to_i + 1
 			if counting > max_counting
 				max_counting   = counting
-				# Assign to its own group
+				# Assign to its own group 
 				assigned_group = pattern_group
 			end
 			counting_neighbors[pattern_group] = counting
@@ -59,7 +59,7 @@ class MLKNN
 			chose_k += 1
 			if chose_k >= k_neighbor
 				own_distance = sum_group_distances[assigned_group].to_f
-				counting_neighbors.each{ |group_name, counting| 
+				counting_neighbors.each{ |group_name| 
 					if (group_name != assigned_group) && (counting_neighbors[group_name] == max_counting)
 						other_distance = sum_group_distances[group_name].to_f
 						if other_distance < own_distance
