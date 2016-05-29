@@ -93,7 +93,7 @@ class MLKNN
 	def calculate_distance(x1, x2)
 		case @kernel_method
 			when MLDistanceKernel::COSINE_SIMILARITY
-				@distance_function.cosine_similarity(x1, x2)
+				1.0 - @distance_function.cosine_similarity(x1, x2)
 			when MLDistanceKernel::ECULIDEAN
 				@distance_function.eculidean(x1, x2)
 			when MLDistanceKernel::RBF
